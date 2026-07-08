@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fruit Classification System</title>
+
+  <!-- ✅ โหลดไลบรารี TensorFlow.js เพื่อให้เว็บใช้งานโมเดล AI ได้ -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+  <!-- ✅ โหลดไลบรารีของ Teachable Machine สำหรับโมเดลภาพ -->
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+  <h1>ระบบจำแนกผลไม้</h1>
+  <h2>** สามารถจำแนกได้เฉพาะแอปเปิ้ล กล้วย และส้มเท่านั้น **</h2>
+
+  <!-- 📂 ปุ่มให้นักเรียนเลือกไฟล์ภาพจากเครื่อง -->
+  <input type="file" id="imageUpload" accept="image/*">
+  <br><br>
+
+  <!-- 🖼 ภาพจะแสดงตรงนี้ (ตอนเริ่มต้นจะซ่อนไว้ก่อน) -->
+  <img id="uploadedImage" width="224" height="224" style="display:none;">
+
+  <!-- 📊 ตำแหน่งสำหรับแสดงผลลัพธ์ของโมเดล -->
+  <div id="label-container"></div>
+
+  <script>
+    // 🔗 ลิงก์โมเดลจาก Teachable Machine ที่เราเทรนไว้
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/rjLXCgFTJ/";
+
+    // ตัวแปรสำหรับเก็บข้อมูลโมเดล และจำนวนคลาส
+    let model, labelContainer, maxPredictions;
+
+    // ✅ ฟังก์ชันจะทำงานทันทีเมื่อหน้าเว็บโหลด
+    window.onload = async () => {
+      // เตรียมลิงก์สำหรับโหลดไฟล์ของโมเดล
+      const modelURL = MODEL_URL + "model.json";
+      const metadataURL = MODEL_URL + "metadata.json";
+
+      // โหลดโมเดลเข้ามา
+      model = await tmImage.load(modelURL, metadataURL);
+
+      // อ่านจำนวนคลาสทั้งหมดในโมเดล (เช่น จำแนกได้กี่ประเภท)
+      maxPredictions = model.getTotalClasses();
+
+      // สร้างกล่องสำหรับแสดงผลลัพธ์ในหน้าเว็บ
+      labelContainer = document.getElementById("label-container");
+      for (let i = 0; i < maxPredictions; i++) {
+        labelContainer.appendChild(document.createElement("div"));
+      }
+
+      // เมื่อมีการเลือกไฟล์ภาพ → เรียกใช้ฟังก์ชัน handleImageUpload
+      document.getElementById("imageUpload").addEventListener("change", handleImageUpload);
+    };
+
+    // 📸 ฟังก์ชันที่ทำงานเมื่อผู้ใช้เลือกภาพ
+    async function handleImageUpload(event) {
+      // อ่านไฟล์ภาพที่ผู้ใช้เลือก
+      const file = event.target.files[0];
+      if (!file) return; // ถ้าไม่ได้เลือกภาพ ไม่ต้องทำอะไร
+
+      // ดึง <img> ที่จะใช้แสดงภาพ
+      const imgElement = document.getElementById("uploadedImage");
+
+      // แสดงภาพ (เปิดจาก hidden เป็น block)
+      imgElement.style.display = "block";
+
+      // สร้าง URL ชั่วคราวสำหรับแสดงภาพที่เลือก
+      imgElement.src = window.URL.createObjectURL(file);
+
+      // เมื่อโหลดภาพเสร็จ → ส่งไปให้โมเดลทำนาย
+      imgElement.onload = async () => {
+        // ส่งภาพเข้าโมเดล
+        const prediction = await model.predict(imgElement);
+
+        // แสดงผลลัพธ์แต่ละคลาสที่โมเดลจำแนกได้
+        for (let i = 0; i < maxPredictions; i++) {
+          const classPrediction = prediction[i].className + ": " +
+                (prediction[i].probability * 100).toFixed(2) + "%";
+
+          // แสดงผลแต่ละคลาสในกล่องข้อความ
+          labelContainer.childNodes[i].innerHTML = classPrediction;
+        }
+      };
+    }
+  </script>
+</body>
+</html>
